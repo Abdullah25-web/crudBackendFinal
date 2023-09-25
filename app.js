@@ -73,7 +73,7 @@ app.use(function (err, req, res, next) {
 });
 
 mongoose
-  .connect(config.get("db"), {
+  .connect("mongodb://127.0.0.1:27017/todo", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })

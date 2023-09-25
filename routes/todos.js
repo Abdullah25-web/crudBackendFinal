@@ -23,7 +23,7 @@ router.post(
   "/todos",
   [
     body("name").isLength({ min: 3 }).trim().escape(),
-    // body("description").isLength({ min: 3 }).trim().escape(),
+    body("description").isLength({ min: 3 }).trim().escape(),
   ],
   async (req, res) => {
     try {
@@ -46,23 +46,20 @@ router.post(
 // route to update existing task
 router.patch(
   "/todos/:id",
-  requireAuth,
   [
     param("id").isMongoId().withMessage("Invalid todo ID"),
     body("name").isLength({ min: 3 }).trim().escape(),
-    // body("description").isLength({ min: 3 }).trim().escape(),
+    body("description").isLength({ min: 3 }).trim().escape(),
   ],
   async (req, res) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
       const id = req.params.id;
-      const updatedTodoData = req.body;
+      const { name, description } = req.body;
+      const updatedTodoData = { name, description };
       const updatedTodo = await Todo.findByIdAndUpdate(id, updatedTodoData, {
         new: true,
       });
+      console.log("update data:", req.body.description);
       if (!updatedTodo) {
         return res.status(404).json({ error: "Todo not found" });
       }
