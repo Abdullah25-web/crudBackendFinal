@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 
 //handle errors
 const handleErrors = (err) => {
-  console.log(err.message, err.code);
+  // console.log(err.message, err.code);
   let errors = { email: "", password: "" };
 
   //if incorrect email
@@ -43,10 +43,8 @@ module.exports.signup_get = (req, res) => {
 
 module.exports.login_get = (req, res) => {
   if (req.headers.accept === "application/json") {
-    // API-based login request, send JSON response
     res.status(200).json({ message: "Welcome to the login API." });
   } else {
-    // Regular web-based login request, render the login page
     res.render("login");
   }
 };
@@ -67,7 +65,7 @@ module.exports.signup_post = async (req, res) => {
 
 module.exports.login_post = async (req, res) => {
   const { email, password } = req.body;
-  console.log(email, password);
+  // console.log(email, password);
 
   try {
     const user = await User.login(email, password);

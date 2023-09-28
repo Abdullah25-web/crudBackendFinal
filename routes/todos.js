@@ -2,16 +2,14 @@ const Todo = require("../models/ToDo");
 const express = require("express");
 const router = express.Router();
 const { validationResult, body, param } = require("express-validator");
-const { requireAuth, checkUser } = require("../middleware/authMiddleware");
-
-// router.use(requireAuth);
+const { requireAuth } = require("../middleware/authMiddleware");
 
 //route to get all tasks from database
-router.get("/todos", async (req, res) => {
+router.get("/todos", requireAuth, async (req, res) => {
   try {
-    const todos = await Todo.find(); // Assuming you have a Todo model
+    const todos = await Todo.find();
 
-    res.json(todos); // Send todos as JSON response
+    res.json(todos);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -21,9 +19,10 @@ router.get("/todos", async (req, res) => {
 // route to add new tasks
 router.post(
   "/todos",
+  requireAuth,
   [
-    body("name").isLength({ min: 3 }).trim().escape(),
-    body("description").isLength({ min: 3 }).trim().escape(),
+    body("name").isLength({ min: 1 }).trim().escape(),
+    body("description").isLength({ min: 1 }).trim().escape(),
   ],
   async (req, res) => {
     try {
@@ -33,10 +32,11 @@ router.post(
       }
 
       const newTodoData = req.body;
+      // console.log("newTodoData: ", newTodoData);
       const newTodo = new Todo(newTodoData);
       await newTodo.save();
       res.json(newTodo);
-      console.log(newTodoData);
+      // console.log(newTodoData);
     } catch (error) {
       res.status(500).json({ error: "Error creating todo" });
     }
@@ -44,8 +44,9 @@ router.post(
 );
 
 // route to update existing task
-router.patch(
+router.put(
   "/todos/:id",
+  requireAuth,
   [
     param("id").isMongoId().withMessage("Invalid todo ID"),
     body("name").isLength({ min: 3 }).trim().escape(),
@@ -53,13 +54,15 @@ router.patch(
   ],
   async (req, res) => {
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
       const id = req.params.id;
-      const { name, description } = req.body;
-      const updatedTodoData = { name, description };
+      const updatedTodoData = req.body;
       const updatedTodo = await Todo.findByIdAndUpdate(id, updatedTodoData, {
         new: true,
       });
-      console.log("update data:", req.body.description);
       if (!updatedTodo) {
         return res.status(404).json({ error: "Todo not found" });
       }
@@ -70,8 +73,8 @@ router.patch(
   }
 );
 
-// route to update task completion status as complete or incomplete
-router.patch("/todos/status/:id", requireAuth, async (req, res) => {
+// done & undone
+router.put("/todos/status/:id", requireAuth, async (req, res) => {
   const id = req.params.id;
 
   try {

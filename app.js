@@ -11,18 +11,16 @@ const usersRouter = require("./routes/users");
 const todosRouter = require("./routes/todos");
 const bodyParser = require("body-parser");
 const CookieParser = require("cookie-parser");
-const { requireAuth, checkUser } = require("./middleware/authMiddleware");
 const config = require("config");
-const { cookie } = require("express-validator");
 const app = express();
-
+const port = 8000;
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "jade");
 // app.use(cors());
 app.use(
   cors({
-    origin: ["http://localhost:3001"],
+    origin: [config.get("url")],
     credentials: true,
   })
 );
@@ -35,18 +33,16 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(CookieParser());
 
+// Enable CORS for all routes
+app.use(cors({ credentials: true, origin: config.get("url") }));
+
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 
 app.use("/", auth);
 app.use("/", todosRouter);
 
-// app.get("/todos", requireAuth, (req, res) => {
-//   res.send("/todos");
-// });
-
 app.use((req, res, next) => {
-  // Set headers to allow cross-origin requests
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
   res.setHeader(
@@ -56,38 +52,54 @@ app.use((req, res, next) => {
   next();
 });
 
-// catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));
 });
 
 // error handler
 app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
 
-  // render the error page
   res.status(err.status || 500);
   res.render("error");
 });
-
 mongoose
-  .connect("mongodb://127.0.0.1:27017/todo", {
+  .connect(config.get("db"), {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("Commected to Mongo Databas...e"))
+  .then(() => console.log("Connected to Mongo Database"))
   .catch((error) => console.log(error.message));
 
-app.listen(8000, () => console.log("Server started liatening on port: 8000"));
+const server = app.listen(port, () =>
+  console.log(`Server started listening on port: ${port}`)
+);
 
-// const port = process.env.PORT || 3000;
-// app.listen(port, () => {
-//   console.log(`Server is running on port ${port}`);
-// });
+const io = require("socket.io")(server, {
+  pingTimeout: 6000,
+  cors: {
+    origin: config.get("url"),
+  },
+});
 
-// app.use("/api", authMiddleWare);
-// app.use("/api", todosRouter);
+io.on("connection", (socket) => {
+  console.log("Connected to socket.io");
+
+  socket.on("setup", (userData) => {
+    console.log("userData:", userData);
+
+    io.emit("dataUpdated", {
+      message: "Data has been updated!",
+      data: userData,
+    });
+
+    socket.emit("connected");
+  });
+
+  socket.on("disconnect", () => {
+    console.log("A client disconnected");
+  });
+});
 
 module.exports = app;
